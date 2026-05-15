@@ -79,10 +79,21 @@
 - **深模块**（pipeline/）：YOLO 检测器、QR 解码器、PaddleOCR 封装、LLM 提取器（多后端）、规则提取器、校验器、重复检测器。每个模块接口极简、可独立测试、不依赖 Web 框架。
 - **浅模块**（web/）：FastAPI 路由只做参数绑定和结果转发，Jinja2 模板只做渲染。不包含业务逻辑。
 - **导出模块**（export/）：Excel/PDF 写入器，接收字典数据，返回 BytesIO。
-- **工具脚本**（scripts/）：一次性运行的爬虫和标注脚本，不进入主流程。
+- **工具脚本**（scripts/）：爬虫（百度图片采集）、自动打标（AI 预标注 + 交互式人工审核）、训练脚本（自动分割 + YOLOv8 微调）。不进入主流程。
 
 ### 页面流程
 6 个独立页面：上传页 → 处理中页（SSE 富展示）→ 校验失败页（阻塞+标红）或报销表单页（7 只读+3 手填）→ 重复报警页（阻塞）或提交成功页（双格式下载）。
+
+### 流水线数据流
+SSE 推送各阶段进度和中间结果到处理中页。LLM 提取完成后，所有字段和校验结果存入服务端 `app.state.tasks[task_id]`，后续表单页和校验失败页从 task store 读取——不依赖浏览器 sessionStorage，数据流在服务端闭环。
+
+### 数据集划分
+标注完成的数据按 80% 训练集 / 20% 验证集随机分割（固定 seed=42）。由训练脚本的 `--split 0.8` 参数自动执行，输出到 `data/dataset/{train,val}/{images,labels}/`。原始标注目录保持平铺结构，分割后的目录结构为训练时动态生成。
+
+### 数据集来源
+- 优先使用公开数据集：ICDAR 2019 SROIE（1000 张收据/发票图片）、天池/和鲸社区的中文增值税发票数据集、GitHub 社区整理的发票数据集
+- 百度图片爬取约 100 张作为多样性补充，关键词覆盖"增值税发票""增值税电子发票""增值税专用发票""增值税普通发票"
+- 所有原始图片统一放入 `data/raw/`，经 AI 辅助打标 + 交互式人工审核后进入 `data/labeled/`
 
 ## Testing Decisions
 
@@ -121,27 +132,44 @@ pytest + unittest.mock（已在 Python 标准库中）
 
 ## Current Progress
 
-### 已完成
-- [x] 项目骨架：目录结构、`.gitignore`、`.env`（API Key 已配置）、`config.py`
-- [x] 领域文档：`CONTEXT.md`（22 条术语）、`docs/adr/0001-双信息校验架构.md`、`docs/adr/0002-多模态LLM信息抽取.md`
-- [x] 依赖安装：conda 环境 `invoice-recognition`（Python 3.10），所有核心包已安装并验证导入成功
-- [x] 数据库层：`db/database.py`（SQLAlchemy 引擎+会话）、`db/models.py`（Invoice 表 ORM + init_db）
-- [x] Pipeline 7 个模块全部完成
-- [x] 导出模块：Excel + PDF 双格式
-- [x] Web 层：FastAPI 路由 + 7 个 Jinja2 模板 + `app.py` 入口
-- [x] 技术文档（原始课程需求）
+### Phase 1 — 项目骨架与文档（已完成）
+- [x] 目录结构、`.gitignore`、`.env`（通义千问 API Key 已配置）、`config.py`
+- [x] CONTEXT.md（24 条领域术语）
+- [x] ADR-0001 双信息校验架构、ADR-0002 多模态 LLM 信息抽取
+- [x] 原始技术需求文档
 
-### 待完成
-- [ ] **数据流修复**：SSE 推送的提取结果需存入 `app.state.tasks`，表单页从 task store 读取。当前 form.html 使用 sessionStorage 过渡
-- [ ] **工具脚本**：`scripts/crawl_invoices.py`（百度图片爬虫）、`scripts/auto_label.py`（AI 辅助打标）
-- [ ] **YOLO 模型训练**：收集数据集 → 标注 → 微调 → 导出 `yolo_qr.pt` 权重
-- [ ] **单元测试**：pipeline 核心模块的 pytest 用例
-- [ ] **requirements.txt**：`pip freeze` 导出依赖清单
-- [ ] **全流程验证**：启动 FastAPI → 上传发票 → 验证 5 个阶段正常 → 提交 → 导出双格式
+### Phase 2 — 核心模块（已完成并验证）
+- [x] **数据库层**：SQLAlchemy 引擎 + Session 管理 + Invoice 表 ORM + `init_db()`
+- [x] **Pipeline（7 个深模块）**：YOLO 检测器、PaddleOCR 封装、QR 解码器、LLM 多后端提取器、规则降级提取器、双信息校验器、重复检测器
+- [x] **导出模块**：Excel（openpyxl，实测 5519 bytes）+ PDF（WeasyPrint HTML 渲染）
+- [x] **Web 层**：FastAPI 路由（11 个端点）+ 7 个 Jinja2 模板 + `app.py` 入口
+- [x] **SSE 数据流**：提取结果存入 `app.state.tasks`，表单页从服务端读取，不依赖浏览器缓存
+- [x] **Python 验证**：11/11 模块全部通过导入和逻辑测试（rule_extractor 正则提取正确、verifier 匹配/不匹配用例正确、excel 生成正常、FastAPI app 创建成功）
+
+### Phase 3 — 工具脚本（已完成）
+- [x] `scripts/crawl_invoices.py`：百度图片爬虫，4 个关键词 × 25 张 = 100 张
+- [x] `scripts/auto_label.py`：AI 预标注 + OpenCV 交互式人工审核（y=确认/n=拒绝）
+- [x] `scripts/train_yolo.py`：自动 80/20 分割 + YOLOv8n 微调 + 权重导出
+- [x] `requirements.txt`：`pip freeze` 导出 110 个包（含 weasyprint）
+
+### Phase 4 — 基础设施（已完成）
+- [x] conda 环境 `invoice-recognition`（Python 3.10）
+- [x] Git 仓库初始化 + 3 次提交推送到 GitHub
+- [x] 所有核心依赖安装并验证导入成功
+
+### Phase 5 — 待完成
+- [ ] **数据集采集**：下载公开数据集（ICDAR/天池）+ 运行爬虫脚本
+- [ ] **数据标注**：运行 `auto_label.py` 完成 AI 预标注 + 人工审核
+- [ ] **YOLO 训练**：运行 `train_yolo.py` 微调并导出 `yolo_qr.pt`
+- [ ] **单元测试**：pipeline 核心模块的 pytest 用例（verifier / rule_extractor / duplicate_checker / llm_extractor / qr_decoder / export writers）
+- [ ] **端到端验证**：上传真实增值税发票 → 5 个阶段正常走完 → 提交成功 → 下载 Excel/PDF
+- [ ] **演示材料**：6 张核心功能截图 + 技术报告（Word/PDF）
 
 ## Further Notes
 
 - 本项目为"深度学习理论及应用实践"课程大作业，代码需模块化、注释清晰
 - 交付物要求：源代码 + 至少 6 张核心功能截图 + Word/PDF 技术报告
 - 通义千问 API Key 已配置在 `.env` 中，`.gitignore` 已排除该文件，不会泄露
-- Chromium 窗口编码警告（`chcp` 找不到）为 conda 在 Windows 上的已知问题，不影响 Python 运行
+- Git 仓库已推送至 GitHub，历史提交清晰（3 次 commit：项目初始化 → 补全模块 → 数据集分割）
+- 启动方式：`conda activate invoice-recognition && python app.py`，浏览器打开 `http://127.0.0.1:8000`
+- Windows 下 `conda run` 存在 `chcp` 编码警告，不影响 Python 运行，建议用 `conda activate` 后直接执行
