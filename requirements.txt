@@ -1,7 +1,3 @@
-ERROR conda.cli.main_run:execute(127): `conda run pip freeze` failed. (See above for error)
-aiofiles==25.1.0
-aiohappyeyeballs==2.6.1
-aiohttp==3.13.5
 aiosignal==1.4.0
 aistudio-sdk==0.3.8
 annotated-doc==0.0.4
@@ -11,10 +7,11 @@ async-timeout==5.0.1
 attrs==26.1.0
 bce-python-sdk==0.9.71
 brotli==1.2.0
-certifi==2026.4.22
-cffi==2.0.0
+brotlicffi @ file:///C:/miniconda3/conda-bld/brotlicffi_1764961372591/work
+certifi @ file:///C:/Users/task_177697112580224/croot/certifi_1776971236755/work/certifi
+cffi @ file:///C:/miniconda3/conda-bld/cffi_1761832794697/work
 chardet==7.4.3
-charset-normalizer==3.4.7
+charset-normalizer @ file:///C:/miniconda3/conda-bld/charset-normalizer_1761744944645/work
 click==8.3.3
 colorama==0.4.6
 colorlog==6.10.1
@@ -27,30 +24,34 @@ dashscope==1.25.18
 et_xmlfile==2.0.0
 exceptiongroup==1.3.1
 fastapi==0.136.1
-filelock==3.29.0
+filelock @ file:///C:/Users/task_176943980686702/croot/filelock_1769440565956/work
 fonttools==4.63.0
 frozenlist==1.8.0
 fsspec==2026.4.0
 future==1.0.0
+gmpy2 @ file:///C:/miniconda3/conda-bld/gmpy2_1764748105976/work
 greenlet==3.5.0
 h11==0.16.0
 hf-xet==1.5.0
 httpcore==1.0.9
 httpx==0.28.1
 huggingface_hub==1.14.0
-idna==3.15
+idna @ file:///C:/miniconda3/conda-bld/idna_1761912044311/work
 imagesize==2.0.0
-Jinja2==3.1.6
+Jinja2 @ file:///C:/b/abs_920kup4e6u/croot/jinja2_1741711580669/work
 kiwisolver==1.5.0
 markdown-it-py==4.2.0
-MarkupSafe==3.0.3
+MarkupSafe @ file:///C:/b/abs_a0ma7ge0jc/croot/markupsafe_1738584052792/work
 matplotlib==3.10.9
 mdurl==0.1.2
+mkl-service==2.4.0
+mkl_fft @ file:///C:/Users/dev-admin/mkl/mkl_fft_1730823082242/work
+mkl_random @ file:///C:/Users/dev-admin/mkl/mkl_random_1730822522280/work
 modelscope==1.36.3
-mpmath==1.3.0
+mpmath @ file:///C:/b/abs_7833jrbiox/croot/mpmath_1690848321154/work
 multidict==6.7.1
-networkx==3.4.2
-numpy==2.2.6
+networkx @ file:///C:/b/abs_b054htfn9t/croot/networkx_1737043671910/work
+numpy @ file:///C:/b/abs_0123vcxhf8/croot/numpy_and_numpy_base_1725470331966/work/dist/numpy-2.0.1-cp310-cp310-win_amd64.whl#sha256=e824ec3b279f4c5207736c83ac2f2dc79b489e08501a4ea9e3fc178c45db289b
 opencv-contrib-python==4.10.0.84
 opencv-python==4.13.0.92
 openpyxl==3.1.5
@@ -60,7 +61,7 @@ paddleocr==3.5.0
 paddlepaddle==3.3.1
 paddlex==3.5.2
 pandas==2.3.3
-pillow==12.2.0
+pillow @ file:///C:/b/abs_b50vowcrzo/croot/pillow_1738010273782/work
 polars==1.40.1
 polars-runtime-32==1.40.1
 prettytable==3.17.0
@@ -69,7 +70,7 @@ protobuf==7.34.1
 psutil==7.2.2
 py-cpuinfo==9.0.0
 pyclipper==1.4.0
-pycparser==3.0
+pycparser @ file:///C:/Users/task_177495971250430/croot/pycparser_1774959822609/work
 pycryptodome==3.23.0
 pydantic==2.13.4
 pydantic_core==2.46.4
@@ -79,6 +80,7 @@ PyMuPDF==1.27.2.3
 pyparsing==3.3.2
 pypdfium2==5.8.0
 pyphen==0.17.2
+PySocks @ file:///C:/miniconda3/conda-bld/pysocks_1761753030270/work
 python-bidi==0.6.10
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
@@ -86,7 +88,7 @@ python-multipart==0.0.28
 pytz==2026.2
 PyYAML==6.0.2
 pyzbar==0.1.9
-requests==2.34.2
+requests @ file:///C:/Users/task_177506608527885/croot/requests_1775066155000/work
 rich==15.0.0
 ruamel.yaml==0.19.1
 safetensors==0.7.0
@@ -96,25 +98,25 @@ shellingham==1.5.4
 six==1.17.0
 SQLAlchemy==2.0.49
 starlette==1.0.0
-sympy==1.14.0
+sympy @ file:///C:/miniconda3/conda-bld/sympy_1764762978780/work
 tinycss2==1.5.1
 tinyhtml5==2.1.0
-torch==2.12.0
-torchvision==0.27.0
+torch==2.5.1
+torchvision==0.20.1
 tqdm==4.67.3
 typer==0.25.1
 typing-inspection==0.4.2
-typing_extensions==4.15.0
+typing_extensions @ file:///C:/b/abs_ecq8gc0vbm/croot/typing_extensions_1756281142218/work
 tzdata==2026.2
 ujson==5.12.1
 ultralytics==8.4.50
 ultralytics-thop==2.0.19
-urllib3==2.7.0
+urllib3 @ file:///C:/Users/task_177853593812673/croot/urllib3_1778536217005/work
 uvicorn==0.47.0
 wcwidth==0.7.0
 weasyprint==68.1
 webencodings==0.5.1
 websocket-client==1.9.0
+win_inet_pton @ file:///C:/miniconda3/conda-bld/win_inet_pton_1761746276406/work
 yarl==1.23.0
 zopfli==0.4.1
-

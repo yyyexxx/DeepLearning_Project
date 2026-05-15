@@ -32,7 +32,12 @@ conda activate invoice-recognition
 
 ## 步骤 3：安装 PyTorch
 
-**有 NVIDIA 显卡（推荐）**：
+**有 NVIDIA 显卡（推荐，国内网络用 conda）**：
+```bash
+conda install -n invoice-recognition pytorch torchvision pytorch-cuda=12.4 -c pytorch -c nvidia -y
+```
+
+**有 NVIDIA 显卡（海外网络，pip 更快）**：
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 ```
