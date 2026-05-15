@@ -48,15 +48,15 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const TASK_ID = "{{ task_id }}";
-const EXT = "{{ ext }}";
-
-// 从 SSE 收到的数据填充表单（存进了 sessionStorage）
-const extracted = JSON.parse(sessionStorage.getItem('extracted_' + TASK_ID) || '{}');
-for (const [key, val] of Object.entries(extracted)) {
+// 从服务端模板数据填充只读字段
+const data = {{ data | tojson | safe }};
+for (const [key, val] of Object.entries(data)) {
   const el = document.querySelector('[name="' + key + '"]');
   if (el && val !== null && val !== undefined) el.value = val;
 }
+
+const TASK_ID = "{{ task_id }}";
+const EXT = "{{ ext }}";
 
 document.getElementById('submit-form').addEventListener('submit', async e => {
   e.preventDefault();

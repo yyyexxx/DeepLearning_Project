@@ -100,8 +100,9 @@ async def api_upload(file: UploadFile = File(...)):
 
 
 @router.get("/api/process-stream/{task_id}/{ext}")
-async def api_process_stream(task_id: str, ext: str):
+async def api_process_stream(request: Request, task_id: str, ext: str):
     """SSE 推送处理进度和中间结果。"""
+    app_state = request.app.state
 
     async def generate():
         filepath = str(UPLOAD_DIR / f"{task_id}.{ext}")
@@ -187,6 +188,15 @@ async def api_process_stream(task_id: str, ext: str):
             "qr_missing": qr_data is None,
             "mismatches": vr.mismatches,
         })
+
+        # 将提取结果和校验结果存入 task store，供后续页面读取
+        app_state.tasks[task_id] = {
+            **extracted,
+            "llm_source": "llm" if llm_used else "rules",
+            "passed": vr.passed,
+            "mismatches": vr.mismatches,
+            "qr_missing": qr_data is None,
+        }
 
         # 阶段 6: 重定向
         if vr.passed is True:
