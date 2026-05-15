@@ -205,6 +205,23 @@ OpenCV 打标 (71张) → 初训 YOLO (mAP50=0.942)
 - `--skip-dedup` 选项支持公开数据集直标（公开数据集已经过人工筛选，无需去重）
 - `--prefix public` 和 `--prefix invoice` 区分不同数据来源
 
+### 运行时依赖兼容性
+
+部署阶段遇到三个依赖版本不兼容问题，均已修复：
+
+**PaddleOCR 3.5 API 升级**
+- PaddleOCR 3.5 移除了 `use_gpu` 和 `show_log` 参数
+- `ocr()` 方法已废弃，改用 `predict()` 返回 `OCRResult` 迭代器
+- `OCRResult` 提供 `.boxes`、`.texts`、`.scores` 属性，替代旧的 `[(box, (text, score)), ...]` 格式
+
+**PaddlePaddle 3.3 oneDNN 不兼容**
+- PaddlePaddle 3.3.1 的 oneDNN 后端在部分 Windows 环境下抛出 `NotImplementedError: ConvertPirAttribute2RuntimeAttribute`
+- 解决方案：设置环境变量 `FLAGS_use_onednn=0` 禁用 oneDNN
+
+**Starlette 1.0 TemplateResponse API 变更**
+- Starlette 1.0 中 `Jinja2Templates.TemplateResponse` 的 `request` 从自动注入变为必须显式传入第一参数
+- 路由中 6 处 `TemplateResponse(name, context)` 改为 `TemplateResponse(request, name, context)`
+
 ## Current Progress
 
 ### Phase 1 — 项目骨架与文档（已完成）
@@ -240,6 +257,9 @@ OpenCV 打标 (71张) → 初训 YOLO (mAP50=0.942)
 - [x] **公开数据集导入**：用户手工下载 88 张 → `--skip-dedup --prefix public` 直标 → 13 张
 - [x] **YOLO 引导式重打标**：71 张初训 → YOLO 重扫公开数据集 → 78/88 张检测成功 → 123 张标注
 - [x] **YOLO 最终训练**：123 张（98 train / 25 val），mAP50=0.924, mAP50-95=0.788, 推理 2.8ms/张
+- [x] **Web 服务启动**：FastAPI + Jinja2 模板正常渲染，首页 200 OK
+- [x] **PaddleOCR 3.5 适配**：ocr()→predict()，OCRResult 新返回格式，禁用 oneDNN 解决 PaddlePaddle 3.3 兼容性问题
+- [x] **Starlette 1.0 适配**：TemplateResponse 需 request 为第一参数，Jinja2 Environment→Jinja2Templates
 - [ ] **端到端验证**：上传真实增值税发票 → 5 个阶段正常走完 → 提交成功 → 下载 Excel/PDF
 - [ ] **演示材料**：6 张核心功能截图 + 技术报告（Word/PDF）
 
@@ -248,6 +268,6 @@ OpenCV 打标 (71张) → 初训 YOLO (mAP50=0.942)
 - 本项目为"深度学习理论及应用实践"课程大作业，代码需模块化、注释清晰
 - 交付物要求：源代码 + 至少 6 张核心功能截图 + Word/PDF 技术报告
 - 通义千问 API Key 已配置在 `.env` 中，`.gitignore` 已排除该文件，不会泄露
-- Git 仓库已推送至 GitHub，8 次提交：项目初始化 → 补全模块 → 数据集分割 → PRD 更新 → 环境配置 → PyTorch CUDA → 34 测试 → 爬虫管线迭代
+- Git 仓库已推送至 GitHub，10 次提交（含最新：运行时兼容性修复、Web 服务启动）
 - 启动方式：`conda activate invoice-recognition && python app.py`，浏览器打开 `http://127.0.0.1:8000`
 - Windows 下 `conda run` 存在 `chcp` 编码警告，不影响 Python 运行，建议用 `conda activate` 后直接执行
