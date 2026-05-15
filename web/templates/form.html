@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}填写报销单 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>报销单</h1>
+  <p class="subtitle">自动提取字段为只读，手动字段请填写</p>
+
+  {% if qr_missing == "1" %}
+  <div class="alert alert-warning">⚠ 未检测到二维码，数据未经双信息校验，请人工核对自动提取字段。</div>
+  {% endif %}
+
+  <form id="submit-form">
+    <h2 style="margin-top: 20px;">自动提取字段（只读）</h2>
+    <div class="form-row">
+      <div><label>发票代码</label><input type="text" name="invoice_code" readonly></div>
+      <div><label>发票号码</label><input type="text" name="invoice_number" readonly></div>
+    </div>
+    <div class="form-row">
+      <div><label>开票日期</label><input type="text" name="invoice_date" readonly></div>
+      <div><label>购买方</label><input type="text" name="purchaser" readonly></div>
+    </div>
+    <div class="form-row">
+      <div><label>销售方</label><input type="text" name="seller" readonly></div>
+      <div><label>不含税金额</label><input type="text" name="amount" readonly></div>
+    </div>
+    <div class="form-row">
+      <div><label>税额</label><input type="text" name="tax" readonly></div>
+      <div><label>价税合计</label><input type="text" name="total" readonly></div>
+    </div>
+
+    <h2 style="margin-top: 28px;">手动填写字段</h2>
+    <div class="form-row">
+      <div><label>报销人 <span style="color:#e74c3c;">*</span></label><input type="text" name="reimburser" required></div>
+      <div><label>所属部门 <span style="color:#e74c3c;">*</span></label><input type="text" name="department" required></div>
+    </div>
+    <div class="form-row full">
+      <div><label>报销事由 <span style="color:#e74c3c;">*</span></label><input type="text" name="reason" required placeholder="如：差旅费、办公用品采购等"></div>
+    </div>
+
+    <div id="submit-error" class="alert alert-danger" style="display: none; margin-top: 16px;"></div>
+
+    <div class="btn-group">
+      <button type="submit" class="btn btn-primary" id="submit-btn">提交报销单</button>
+      <a href="/" class="btn btn-outline">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const TASK_ID = "{{ task_id }}";
+const EXT = "{{ ext }}";
+
+// 从 SSE 收到的数据填充表单（存进了 sessionStorage）
+const extracted = JSON.parse(sessionStorage.getItem('extracted_' + TASK_ID) || '{}');
+for (const [key, val] of Object.entries(extracted)) {
+  const el = document.querySelector('[name="' + key + '"]');
+  if (el && val !== null && val !== undefined) el.value = val;
+}
+
+document.getElementById('submit-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  document.getElementById('submit-error').style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('reimburser', document.querySelector('[name="reimburser"]').value);
+  formData.append('reason', document.querySelector('[name="reason"]').value);
+  formData.append('department', document.querySelector('[name="department"]').value);
+
+  const resp = await fetch('/api/submit/' + TASK_ID + '/' + EXT, { method: 'POST', body: formData });
+  const data = await resp.json();
+  if (data.error === 'duplicate') {
+    window.location.href = '/duplicate/' + data.existing_id;
+  } else if (data.ok) {
+    window.location.href = '/success/' + data.invoice_id;
+  }
+});
+</script>
+{% endblock %}

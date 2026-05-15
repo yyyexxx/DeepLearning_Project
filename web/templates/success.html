@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}提交成功 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+  <h1 style="color: #27ae60;">报销单提交成功</h1>
+  <p class="subtitle">所有信息已保存，可选择以下格式导出</p>
+
+  <div class="step-indicator">
+    <span class="step">① 上传 ✓</span>
+    <span class="step">② 识别 ✓</span>
+    <span class="step">③ 校验 ✓</span>
+    <span class="step">④ 填单 ✓</span>
+    <span class="step active">⑤ 完成</span>
+  </div>
+
+  <table style="margin: 20px 0; text-align: left;">
+    <tr><th style="width: 30%;">发票代码</th><td>{{ invoice.invoice_code }}</td></tr>
+    <tr><th>发票号码</th><td>{{ invoice.invoice_number }}</td></tr>
+    <tr><th>开票日期</th><td>{{ invoice.invoice_date }}</td></tr>
+    <tr><th>购买方</th><td>{{ invoice.purchaser }}</td></tr>
+    <tr><th>销售方</th><td>{{ invoice.seller }}</td></tr>
+    <tr><th>不含税金额</th><td>¥{{ "%.2f" | format(invoice.amount or 0) }}</td></tr>
+    <tr><th>税额</th><td>¥{{ "%.2f" | format(invoice.tax or 0) }}</td></tr>
+    <tr><th>价税合计</th><td>¥{{ "%.2f" | format(invoice.total or 0) }}</td></tr>
+    <tr><th>报销人</th><td>{{ invoice.reimburser }}</td></tr>
+    <tr><th>报销事由</th><td>{{ invoice.reason }}</td></tr>
+    <tr><th>所属部门</th><td>{{ invoice.department }}</td></tr>
+    <tr><th>提交日期</th><td>{{ invoice.created_at }}</td></tr>
+  </table>
+
+  <div class="btn-group" style="justify-content: center;">
+    <a href="/api/export/excel/{{ invoice.id }}" class="btn btn-success">下载 Excel</a>
+    <a href="/api/export/pdf/{{ invoice.id }}" class="btn btn-outline">下载 PDF</a>
+    <a href="/" class="btn btn-outline">处理下一张</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}重复报销 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+  <h1 style="color: #e74c3c;">重复报销报警</h1>
+  <p class="subtitle">该发票已在系统中报销过，不允许重复提交</p>
+
+  <div class="alert alert-danger" style="text-align: left;">
+    <table>
+      <tr><th style="width: 30%;">发票代码</th><td>{{ invoice.invoice_code }}</td></tr>
+      <tr><th>发票号码</th><td>{{ invoice.invoice_number }}</td></tr>
+      <tr><th>开票日期</th><td>{{ invoice.invoice_date }}</td></tr>
+      <tr><th>价税合计</th><td>¥{{ "%.2f" | format(invoice.total or 0) }}</td></tr>
+      <tr><th>原报销人</th><td>{{ invoice.reimburser }}</td></tr>
+      <tr><th>原报销时间</th><td>{{ invoice.created_at }}</td></tr>
+    </table>
+  </div>
+
+  <div class="btn-group" style="justify-content: center;">
+    <a href="/" class="btn btn-primary">返回首页</a>
+  </div>
+</div>
+{% endblock %}

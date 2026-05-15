@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+uploads/
+data/raw/
+data/labeled/
+data/model_weights/
+*.db
+.venv/
+node_modules/
+.DS_Store

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}正在处理 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card">
+  <h1 style="text-align: center;">正在处理发票...</h1>
+
+  <div class="step-indicator">
+    <span class="step">① 上传 ✓</span>
+    <span class="step active" id="step-yolo">② 检测二维码</span>
+    <span class="step" id="step-ocr">③ OCR 识别</span>
+    <span class="step" id="step-llm">④ LLM 提取</span>
+    <span class="step" id="step-verify">⑤ 校验</span>
+  </div>
+
+  <div id="status-msg" style="text-align: center; color: #888; margin: 16px 0;">准备中...</div>
+
+  <!-- YOLO 结果 -->
+  <div id="yolo-block" class="result-block" style="display: none;">
+    <h4>二维码检测结果</h4>
+    <img id="yolo-preview" style="max-width: 100%; max-height: 280px; border-radius: 6px;">
+    <p id="yolo-status" style="font-size: 13px; margin-top: 8px;"></p>
+  </div>
+
+  <!-- OCR 结果 -->
+  <div id="ocr-block" class="result-block" style="display: none;">
+    <h4>OCR 识别文字</h4>
+    <pre id="ocr-text"></pre>
+  </div>
+
+  <!-- LLM 结果 -->
+  <div id="llm-block" class="result-block" style="display: none;">
+    <h4 id="llm-title">大模型提取结果</h4>
+    <pre id="llm-json"></pre>
+  </div>
+
+  <!-- 校验结果 -->
+  <div id="verify-block" class="result-block" style="display: none;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TASK_ID = "{{ task_id }}";
+const evtSource = new EventSource('/api/process-stream/' + TASK_ID + '/jpg');
+
+evtSource.addEventListener('progress', e => {
+  const d = JSON.parse(e.data);
+  document.getElementById('status-msg').textContent = d.message;
+  if (d.stage === 'yolo') setStepActive('step-yolo');
+  if (d.stage === 'ocr') setStepActive('step-ocr');
+  if (d.stage === 'llm' || d.stage === 'llm_fallback') setStepActive('step-llm');
+  if (d.stage === 'verify') setStepActive('step-verify');
+});
+
+evtSource.addEventListener('yolo_result', e => {
+  const d = JSON.parse(e.data);
+  const block = document.getElementById('yolo-block');
+  block.style.display = 'block';
+  document.getElementById('yolo-status').textContent = d.detected ? '✓ 检测到二维码' : '未检测到二维码';
+  document.getElementById('yolo-status').style.color = d.detected ? '#27ae60' : '#e74c3c';
+  if (d.preview) document.getElementById('yolo-preview').src = d.preview;
+});
+
+evtSource.addEventListener('qr_result', e => {
+  const d = JSON.parse(e.data);
+  const yb = document.getElementById('yolo-block');
+  if (d.parsed && d.data) {
+    document.getElementById('yolo-status').textContent += ' | 解析成功: ' + d.data.invoice_code + ' / ' + d.data.invoice_number;
+  } else if (!d.parsed) {
+    document.getElementById('yolo-status').textContent += ' | 二维码解析失败';
+  }
+});
+
+evtSource.addEventListener('ocr_result', e => {
+  const d = JSON.parse(e.data);
+  const block = document.getElementById('ocr-block');
+  block.style.display = 'block';
+  document.getElementById('ocr-text').textContent = d.text_lines.map(l => l.text).join('\n');
+});
+
+evtSource.addEventListener('llm_result', e => {
+  const d = JSON.parse(e.data);
+  const block = document.getElementById('llm-block');
+  block.style.display = 'block';
+  document.getElementById('llm-title').textContent = d.source === 'llm' ? '大模型提取结果' : '规则提取结果（降级）';
+  document.getElementById('llm-json').textContent = JSON.stringify(d.data, null, 2);
+});
+
+evtSource.addEventListener('verify_result', e => {
+  const d = JSON.parse(e.data);
+  const block = document.getElementById('verify-block');
+  block.style.display = 'block';
+  let html = '<h4>';
+  if (d.qr_missing) html += '二维码缺失 — 跳过校验';
+  else if (d.passed) html += '校验通过 ✓';
+  else html += '校验未通过 ✗';
+  html += '</h4>';
+  if (d.mismatches && d.mismatches.length > 0) {
+    html += '<ul style="font-size:13px;">';
+    d.mismatches.forEach(m => {
+      html += '<li style="margin: 4px 0;"><strong>' + m.field + '</strong>: 二维码=' + m.qr + ' / 提取=' + m.extracted + '</li>';
+    });
+    html += '</ul>';
+  }
+  block.innerHTML = html;
+});
+
+evtSource.addEventListener('redirect', e => {
+  const d = JSON.parse(e.data);
+  window.location.href = d.url;
+});
+
+evtSource.addEventListener('error', e => {
+  const d = JSON.parse(e.data);
+  document.getElementById('status-msg').textContent = '处理失败: ' + d.message;
+  document.getElementById('status-msg').style.color = '#e74c3c';
+  evtSource.close();
+});
+
+function setStepActive(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+{% endblock %}

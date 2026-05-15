@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}校验失败 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card">
+  <h1 style="color: #e74c3c;">校验未通过</h1>
+  <p class="subtitle">二维码数据与 OCR 提取结果存在不一致字段</p>
+
+  <div class="alert alert-danger">
+    <strong>以下字段不一致：</strong>
+    <table style="margin-top: 12px;">
+      <thead><tr><th>字段</th><th>二维码数据</th><th>OCR提取数据</th></tr></thead>
+      <tbody id="mismatch-body"></tbody>
+    </table>
+  </div>
+
+  <p style="color: #888; font-size: 14px; margin-bottom: 24px;">
+    系统已阻塞提交。请检查原发票图片是否清晰，确认后重新上传。
+  </p>
+
+  <div class="btn-group">
+    <a href="/" class="btn btn-primary">重新上传</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const data = {{ data | tojson | safe }};
+if (data.mismatches) {
+  const tbody = document.getElementById('mismatch-body');
+  data.mismatches.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="field-mismatch">' + m.field + '</td><td>' + m.qr + '</td><td>' + m.extracted + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+</script>
+{% endblock %}

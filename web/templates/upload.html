@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}上传发票 — 智能发票识别{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+  <h1>智能发票识别与自动报销填单系统</h1>
+  <p class="subtitle">支持增值税发票（电子/纸质）上传，自动识别与校验</p>
+
+  <div class="step-indicator">
+    <span class="step active">① 上传</span>
+    <span class="step">② 识别</span>
+    <span class="step">③ 校验</span>
+    <span class="step">④ 填单</span>
+    <span class="step">⑤ 提交</span>
+  </div>
+
+  <div id="drop-zone" style="border: 2px dashed #ccc; border-radius: 12px; padding: 48px 24px; margin: 24px 0; cursor: pointer; transition: border-color 0.2s;">
+    <p style="font-size: 40px; margin-bottom: 12px;">📄</p>
+    <p style="font-size: 16px; color: #555;">拖拽发票图片到此处，或点击选择文件</p>
+    <p style="font-size: 12px; color: #aaa; margin-top: 8px;">支持 JPG / PNG / PDF，最大 10MB</p>
+    <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.pdf" style="display: none;">
+  </div>
+
+  <div id="preview" style="display: none; margin: 16px 0;">
+    <img id="preview-img" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid #e5e7eb;">
+  </div>
+
+  <div id="error-msg" class="alert alert-danger" style="display: none;"></div>
+
+  <button id="upload-btn" class="btn btn-primary" disabled style="display: none;">开始识别</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const preview = document.getElementById('preview');
+const previewImg = document.getElementById('preview-img');
+const uploadBtn = document.getElementById('upload-btn');
+const errorMsg = document.getElementById('error-msg');
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4361ee'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#ccc'; });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.style.borderColor = '#ccc';
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const allowed = ['jpg','jpeg','png','pdf'];
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!allowed.includes(ext)) {
+    showError('不支持的文件格式: ' + ext + '，仅支持 JPG、PNG、PDF');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showError('文件超过 10MB 限制');
+    return;
+  }
+  errorMsg.style.display = 'none';
+  selectedFile = file;
+  if (ext !== 'pdf') {
+    const reader = new FileReader();
+    reader.onload = e => { previewImg.src = e.target.result; preview.style.display = 'block'; };
+    reader.readAsDataURL(file);
+  } else {
+    preview.style.display = 'none';
+  }
+  uploadBtn.style.display = 'inline-block';
+  uploadBtn.disabled = false;
+}
+
+uploadBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = '正在上传...';
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+  const data = await resp.json();
+  if (data.error) { showError(data.error); uploadBtn.disabled = false; uploadBtn.textContent = '开始识别'; return; }
+
+  window.location.href = '/process/' + data.task_id;
+});
+
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.style.display = 'block';
+}
+</script>
+{% endblock %}
