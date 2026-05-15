@@ -14,7 +14,9 @@ from pathlib import Path
 
 import cv2
 
+import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 RAW_DIR = BASE_DIR / "data" / "raw"
 LABELED_DIR = BASE_DIR / "data" / "labeled"
 LABELED_DIR.mkdir(parents=True, exist_ok=True)

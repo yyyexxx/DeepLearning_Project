@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from jinja2 import Environment, FileSystemLoader
+from fastapi.templating import Jinja2Templates
 
 from config import BASE_DIR
 from db.models import init_db
@@ -16,7 +16,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="智能发票识别与自动报销填单系统", version="1.0.0")
 
     # Jinja2 模板
-    templates = Environment(loader=FileSystemLoader(str(BASE_DIR / "web" / "templates")))
+    templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
     app.state.templates = templates
 
     # 静态文件

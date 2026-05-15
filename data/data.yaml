@@ -1,0 +1,5 @@
+path: E:/Codes/深度学习大作业/智能发票识别与自动报销填单系统/data/dataset
+train: train/images
+val: val/images
+nc: 1
+names: ["qr_code"]

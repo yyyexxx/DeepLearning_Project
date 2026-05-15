@@ -53,13 +53,13 @@ def get_yolo() -> YOLOQRDetector:
 @router.get("/", response_class=HTMLResponse)
 async def page_upload(request: Request):
     """① 上传页。"""
-    return request.app.state.templates.TemplateResponse("upload.html", {"request": request})
+    return request.app.state.templates.TemplateResponse(request, "upload.html", {"request": request})
 
 
 @router.get("/process/{task_id}", response_class=HTMLResponse)
 async def page_process(request: Request, task_id: str):
     """② 处理中页。"""
-    return request.app.state.templates.TemplateResponse(
+    return request.app.state.templates.TemplateResponse(request, 
         "process.html", {"request": request, "task_id": task_id}
     )
 
@@ -214,7 +214,7 @@ async def api_process_stream(request: Request, task_id: str, ext: str):
 async def page_form(request: Request, task_id: str, ext: str, qr_missing: str = "0"):
     """③b 报销表单页。"""
     data = request.app.state.tasks.get(task_id, {}) if hasattr(request.app.state, 'tasks') else {}
-    return request.app.state.templates.TemplateResponse("form.html", {
+    return request.app.state.templates.TemplateResponse(request, "form.html", {
         "request": request,
         "task_id": task_id,
         "ext": ext,
@@ -227,7 +227,7 @@ async def page_form(request: Request, task_id: str, ext: str, qr_missing: str = 
 async def page_verify_fail(request: Request, task_id: str, ext: str):
     """③a 校验失败页。"""
     data = request.app.state.tasks.get(task_id, {}) if hasattr(request.app.state, 'tasks') else {}
-    return request.app.state.templates.TemplateResponse("verify_fail.html", {
+    return request.app.state.templates.TemplateResponse(request, "verify_fail.html", {
         "request": request,
         "task_id": task_id,
         "ext": ext,
@@ -279,7 +279,7 @@ async def page_success(request: Request, invoice_id: int, db: Session = Depends(
     """④b 提交成功页。"""
     from db.models import Invoice
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
-    return request.app.state.templates.TemplateResponse("success.html", {
+    return request.app.state.templates.TemplateResponse(request, "success.html", {
         "request": request,
         "invoice": invoice,
     })
@@ -290,7 +290,7 @@ async def page_duplicate(request: Request, invoice_id: int, db: Session = Depend
     """④a 重复报警页。"""
     from db.models import Invoice
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
-    return request.app.state.templates.TemplateResponse("duplicate.html", {
+    return request.app.state.templates.TemplateResponse(request, "duplicate.html", {
         "request": request,
         "invoice": invoice,
     })
