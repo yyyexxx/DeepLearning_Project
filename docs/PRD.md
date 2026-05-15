@@ -69,7 +69,7 @@
 
 ### 导出
 - Excel：openpyxl 生成，字段标签+值双列表格，金额格式化为 ¥1,234.56
-- PDF：WeasyPrint 从 HTML 模板渲染，左右双栏布局
+- PDF：reportlab 生成，Windows 系统自带微软雅黑中文字体，无需额外依赖
 - 两种格式在提交成功页并排提供下载按钮
 
 ### 训练数据集
@@ -130,6 +130,61 @@ pytest + unittest.mock（已在 Python 标准库中）
 - YOLO 模型训练过程本身（训练脚本会提供，但不进入主流程）
 - 生产级部署（仅本地开发运行 `uvicorn`）
 
+## 数据采集管线迭代
+
+数据采集经历了三个阶段的技术方案演化，最终收敛为三阶段集成管线。
+
+### 迭代 1：分离式脚本（已废弃）
+
+**架构**：`crawl_invoices.py`（独立爬虫）→ `auto_label.py`（独立打标）
+
+**问题**：
+- 百度图片搜索返回大量缩略图和示意图，爬 100 张仅 5 张含可识别二维码
+- 爬虫和打标分离，中间需手动搬运文件
+- `cv2.imread` 不支持中文路径，Windows 上无法读取中文文件名的图片
+- 终端 GBK 编码无法输出 ✓/✗ 等 Unicode 符号
+- 无去重机制，搜索结果中存在大量视觉重复图片
+
+**发现**：语义关键词（"增值税发票"）命中率极低；精确关键词（"电子发票"、"发票图片 二维码"）命中率更高。
+
+### 迭代 2：分离式修复（已废弃）
+
+**改动**：
+- 用 `np.frombuffer + cv2.imdecode` 替代 `cv2.imread`，解决中文路径问题
+- 用 `[OK]` / `[SKIP]` 替代 Unicode 符号
+- `auto_label.py` 增加 `--use-yolo` 选项，支持切换 YOLO 或 OpenCV QR 检测器
+
+**问题**：爬虫和打标仍然分离，无法自动循环直到达标。
+
+### 迭代 3：集成式 `collect_and_label.py`（当前方案）
+
+**架构**：三阶段管线在单次运行中完成——
+
+```
+阶段 1: 爬虫    阶段 2: 去重            阶段 3: 打标
+百度+搜狗     → dHash 感知哈希     → OpenCV QRCodeDetector
+13个关键词      汉明距离≤5 视为重复    保留检测成功的
+778 张原图      500 张不重复           45 张标注
+```
+
+**关键设计决策**：
+- **双源爬取**：百度图片为主、搜狗图片为备用，避免单源枯竭
+- **MD5 防同次重复**：图片内容 hash 做文件名，同一次运行中相同图片自动跳过
+- **dHash 去重**：图片缩放到 9×8 灰度，计算水平差异哈希（64-bit），汉明距离 ≤ 5 视为重复。优先保留文件较大的图（分辨率更高）
+- **指定目标数量**：`-n 500` 控制去重后的图片数量，而非爬取数量
+- **延续编号**：多次运行时自动检测 `labeled/` 中已有编号，从上次结束位置继续
+- **`--skip-crawl` 选项**：用户手动放入公开数据集到 `raw/` 后，跳过爬虫直接进去重+打标
+
+**数据目录结构**：
+```
+data/
+  raw/        ← 爬虫原图（临时，可清空）
+  dedup/      ← 去重后不重复图片（500 张，中间产物）
+  labeled/    ← 含 QR 的图片 + 同名 .txt 标注（YOLO 格式）
+```
+
+**当前成果**：爬取 778 → 去重 500（删除 278 张重复，去重率 35.7%）→ 45 张已标注。QR 命中率约 9%，瓶颈在于搜索引擎返回的图片多数不包含真实二维码。
+
 ## Current Progress
 
 ### Phase 1 — 项目骨架与文档（已完成）
@@ -150,6 +205,7 @@ pytest + unittest.mock（已在 Python 标准库中）
 - [x] `scripts/crawl_invoices.py`：百度图片爬虫，4 个关键词 × 25 张 = 100 张
 - [x] `scripts/auto_label.py`：AI 预标注 + OpenCV 交互式人工审核（y=确认/n=拒绝）
 - [x] `scripts/train_yolo.py`：自动 80/20 分割 + YOLOv8n 微调 + 权重导出
+- [x] `scripts/collect_and_label.py`：三阶段集成管线（爬虫→去重→打标），详见"数据采集管线迭代"章节
 - [x] `requirements.txt`：`pip freeze` 导出 110 个包（含 weasyprint）
 
 ### Phase 4 — 基础设施（已完成）
@@ -157,11 +213,12 @@ pytest + unittest.mock（已在 Python 标准库中）
 - [x] Git 仓库初始化 + 3 次提交推送到 GitHub
 - [x] 所有核心依赖安装并验证导入成功
 
-### Phase 5 — 待完成
-- [ ] **数据集采集**：下载公开数据集（ICDAR/天池）+ 运行爬虫脚本
-- [ ] **数据标注**：运行 `auto_label.py` 完成 AI 预标注 + 人工审核
-- [ ] **YOLO 训练**：运行 `train_yolo.py` 微调并导出 `yolo_qr.pt`
-- [ ] **单元测试**：pipeline 核心模块的 pytest 用例（verifier / rule_extractor / duplicate_checker / llm_extractor / qr_decoder / export writers）
+### Phase 5 — 进行中
+- [x] **单元测试**：34/34 通过（test_qr_decoder 7 / test_verifier 7 / test_rule_extractor 5 / test_duplicate_checker 4 / test_export 4 / test_llm_extractor 7）
+- [x] **爬虫+去重集成**：爬取 778 张 → dHash 去重 → 500 张不重复存入 `data/dedup/`
+- [x] **QR 检测打标**：500 张中检测到 45 张含二维码，标注格式为 YOLO class+cx+cy+w+h 归一化坐标
+- [ ] **公开数据集补充**：等待用户手动放入 `data/raw/` 后运行 `--skip-crawl` 模式补充标注
+- [ ] **YOLO 训练**：标注数据达到 100+ 张后运行 `train_yolo.py` 微调并导出 `yolo_qr.pt`
 - [ ] **端到端验证**：上传真实增值税发票 → 5 个阶段正常走完 → 提交成功 → 下载 Excel/PDF
 - [ ] **演示材料**：6 张核心功能截图 + 技术报告（Word/PDF）
 
@@ -170,6 +227,6 @@ pytest + unittest.mock（已在 Python 标准库中）
 - 本项目为"深度学习理论及应用实践"课程大作业，代码需模块化、注释清晰
 - 交付物要求：源代码 + 至少 6 张核心功能截图 + Word/PDF 技术报告
 - 通义千问 API Key 已配置在 `.env` 中，`.gitignore` 已排除该文件，不会泄露
-- Git 仓库已推送至 GitHub，历史提交清晰（3 次 commit：项目初始化 → 补全模块 → 数据集分割）
+- Git 仓库已推送至 GitHub，8 次提交：项目初始化 → 补全模块 → 数据集分割 → PRD 更新 → 环境配置 → PyTorch CUDA → 34 测试 → 爬虫管线迭代
 - 启动方式：`conda activate invoice-recognition && python app.py`，浏览器打开 `http://127.0.0.1:8000`
 - Windows 下 `conda run` 存在 `chcp` 编码警告，不影响 Python 运行，建议用 `conda activate` 后直接执行
