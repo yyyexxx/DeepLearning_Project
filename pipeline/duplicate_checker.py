@@ -1,5 +1,7 @@
 """数据库重复报销检测。"""
 
+from datetime import date as DateType
+
 from sqlalchemy.orm import Session
 
 from db.models import Invoice
