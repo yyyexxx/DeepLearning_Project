@@ -244,16 +244,19 @@ def detect_qr(image) -> tuple[bool, list[float]]:
     return True, [cx, cy, bw, bh]
 
 
-def label_images(src_dir: Path, labeled_dir: Path):
-    """对 src_dir 中所有图片做 QR 检测，成功的写入 labeled_dir。"""
+def label_images(src_dir: Path, labeled_dir: Path, prefix: str = "invoice"):
+    """对 src_dir 中所有图片做 QR 检测，成功的写入 labeled_dir。
+    prefix 控制命名格式，如 'invoice' → invoice_0001.jpg, 'public' → public_0001.jpg
+    不同 prefix 的编号各自独立计数。
+    """
     images = sorted(src_dir.glob("*.jpg")) + sorted(src_dir.glob("*.png"))
     if not images:
         print("  无图片可标注。")
         return 0
 
-    # 获取已有标注数量，延续编号
-    existing_labels = len(list(labeled_dir.glob("*.txt")))
-    cnt = existing_labels
+    # 按前缀独立计数，延续已有编号
+    existing = len(list(labeled_dir.glob(f"{prefix}_*.txt")))
+    cnt = existing
 
     kept = 0
     for p in images:
@@ -262,9 +265,9 @@ def label_images(src_dir: Path, labeled_dir: Path):
             continue
         ok, bbox = detect_qr(img)
         if ok:
-            ext = p.suffix[1:]  # 去掉点号
-            img_dst = labeled_dir / f"invoice_{cnt:04d}.{ext}"
-            label_dst = labeled_dir / f"invoice_{cnt:04d}.txt"
+            ext = p.suffix[1:]
+            img_dst = labeled_dir / f"{prefix}_{cnt:04d}.{ext}"
+            label_dst = labeled_dir / f"{prefix}_{cnt:04d}.txt"
             imwrite(img_dst, img)
             label_dst.write_text(
                 f"{CLASS_ID} {bbox[0]:.6f} {bbox[1]:.6f} {bbox[2]:.6f} {bbox[3]:.6f}")
@@ -272,7 +275,7 @@ def label_images(src_dir: Path, labeled_dir: Path):
             kept += 1
             print(f"  [OK] {img_dst.name}")
 
-    print(f"  打标: {len(images)} 张扫描 → {kept} 张含二维码")
+    print(f"  打标 [{prefix}]: {len(images)} 张扫描 → {kept} 张含二维码")
     return kept
 
 
@@ -285,6 +288,8 @@ def main():
     parser = argparse.ArgumentParser(description="爬虫 → 去重 → 500张 → 打标")
     parser.add_argument("-n", "--target", type=int, default=500, help="目标不重复图片数 (default: 500)")
     parser.add_argument("--skip-crawl", action="store_true", help="跳过爬取阶段")
+    parser.add_argument("--skip-dedup", action="store_true", help="跳过去重，直接从 raw/ 打标")
+    parser.add_argument("--prefix", type=str, default="invoice", help="标注文件命名前缀 (default: invoice)")
     args = parser.parse_args()
 
     # ── 阶段 1：爬虫 ─────────────────────────────────
@@ -317,24 +322,37 @@ def main():
             print(f"  raw/ 已有 {current_raw} 张，跳过爬取。")
 
     # ── 阶段 2：去重 ─────────────────────────────────
-    print("\n" + "═" * 50)
-    print("阶段 2/3：感知哈希去重")
-    print("═" * 50)
-    dedup_count = deduplicate(RAW_DIR, DEDUP_DIR, args.target)
+    if args.skip_dedup:
+        print("\n" + "═" * 50)
+        print("阶段 2/3：跳过去重（--skip-dedup）")
+        print("═" * 50)
+        # 直接从 raw/ 打标
+        print("\n" + "═" * 50)
+        print("阶段 3/3：QR 检测打标（从 raw/）")
+        print("═" * 50)
+        label_kept = label_images(RAW_DIR, LABELED_DIR, prefix=args.prefix)
+        dedup_count = 0
+    else:
+        print("\n" + "═" * 50)
+        print("阶段 2/3：感知哈希去重")
+        print("═" * 50)
+        dedup_count = deduplicate(RAW_DIR, DEDUP_DIR, args.target)
 
-    # ── 阶段 3：打标 ─────────────────────────────────
-    print("\n" + "═" * 50)
-    print("阶段 3/3：QR 检测打标")
-    print("═" * 50)
-    label_kept = label_images(DEDUP_DIR, LABELED_DIR)
+        # ── 阶段 3：打标 ─────────────────────────────────
+        print("\n" + "═" * 50)
+        print("阶段 3/3：QR 检测打标（从 dedup/）")
+        print("═" * 50)
+        label_kept = label_images(DEDUP_DIR, LABELED_DIR, prefix=args.prefix)
 
     # ── 汇总 ────────────────────────────────────────
     total_labels = len(list(LABELED_DIR.glob("*.txt")))
+    invoice_cnt = len(list(LABELED_DIR.glob("invoice_*.txt")))
+    public_cnt = len(list(LABELED_DIR.glob("public_*.txt")))
     print("\n" + "═" * 50)
-    print(f"管线完成")
+    print(f"管线完成 (前缀: {args.prefix})")
     print(f"  raw/      原始爬取")
     print(f"  dedup/    去重后: {dedup_count} 张")
-    print(f"  labeled/  已标注: {total_labels} 张")
+    print(f"  labeled/  总标注: {total_labels} 张 (invoice: {invoice_cnt}, public: {public_cnt})")
     print("═" * 50)
 
     if total_labels < 50:
