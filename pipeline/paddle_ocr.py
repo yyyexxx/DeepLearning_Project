@@ -23,8 +23,15 @@ def get_ocr():
 
 def ocr_image(image: np.ndarray) -> list[tuple[str, float]]:
     """对整张图片做 OCR，返回 [(文字, 置信度), ...] 列表。"""
+    import cv2
+    # 限制最长边 ≤ 1024px，加速检测（大图 OCR 极慢）
+    h, w = image.shape[:2]
+    max_side = max(h, w)
+    if max_side > 1024:
+        scale = 1024 / max_side
+        image = cv2.resize(image, (int(w * scale), int(h * scale)))
+
     ocr = get_ocr()
-    # PaddleOCR 3.x: predict() 替代废弃的 ocr()
     results = list(ocr.predict(image))
     if not results:
         return []

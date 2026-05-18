@@ -33,6 +33,17 @@ def create_app() -> FastAPI:
     # 初始化数据库
     init_db()
 
+    # 预热 PaddleOCR 模型（避免首次请求等待 20s）
+    @app.on_event("startup")
+    async def warmup_ocr():
+        import numpy as np
+        from pipeline.paddle_ocr import get_ocr
+        ocr = get_ocr()
+        # 用一张空白图触发模型加载
+        dummy = np.ones((100, 100, 3), dtype=np.uint8) * 255
+        ocr.predict(dummy)
+        print("[startup] PaddleOCR warmed up")
+
     return app
 
 
