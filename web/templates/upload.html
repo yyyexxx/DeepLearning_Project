@@ -24,6 +24,9 @@
     <img id="preview-img" style="max-width: 100%; max-height: 300px; border-radius: 8px; border: 1px solid #e5e7eb;">
   </div>
 
+  <div id="pdf-icon" style="display: none; margin: 16px 0; font-size: 48px;">📄</div>
+  <div id="file-info" style="display: none; font-size: 14px; color: #555; margin: 8px 0; word-break: break-all;"></div>
+
   <div id="error-msg" class="alert alert-danger" style="display: none;"></div>
 
   <button id="upload-btn" class="btn btn-primary" disabled style="display: none;">开始识别</button>
@@ -64,12 +67,20 @@ function handleFile(file) {
   }
   errorMsg.style.display = 'none';
   selectedFile = file;
+
+  // 显示文件名 + 大小
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  document.getElementById('file-info').textContent = file.name + ' (' + sizeMB + ' MB)';
+  document.getElementById('file-info').style.display = 'block';
+
   if (ext !== 'pdf') {
     const reader = new FileReader();
     reader.onload = e => { previewImg.src = e.target.result; preview.style.display = 'block'; };
     reader.readAsDataURL(file);
   } else {
     preview.style.display = 'none';
+    // PDF 图标指示
+    document.getElementById('pdf-icon').style.display = 'block';
   }
   uploadBtn.style.display = 'inline-block';
   uploadBtn.disabled = false;
@@ -79,6 +90,10 @@ uploadBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
   uploadBtn.disabled = true;
   uploadBtn.textContent = '正在上传...';
+
+  // 显示上传中状态
+  document.getElementById('file-info').textContent = '正在上传 ' + selectedFile.name + ' ...';
+  document.getElementById('file-info').style.color = '#4361ee';
 
   const formData = new FormData();
   formData.append('file', selectedFile);
