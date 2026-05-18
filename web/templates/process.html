@@ -120,9 +120,26 @@ evtSource.addEventListener('verify_result', e => {
   block.innerHTML = html;
 });
 
-evtSource.addEventListener('redirect', e => {
+let redirectUrl = '';
+
+evtSource.addEventListener('complete', e => {
   const d = JSON.parse(e.data);
-  window.location.href = d.url;
+  redirectUrl = d.url;
+  // 显示确认按钮
+  const confirmHtml = `
+    <div id="confirm-block" style="text-align: center; margin: 20px 0; padding: 20px; background: #f0fdf4; border-radius: 10px; border: 2px solid #27ae60;">
+      <p style="font-size: 16px; color: #27ae60; font-weight: bold; margin-bottom: 12px;">
+        全部处理完成，请确认识别结果
+      </p>
+      <button onclick="goNext()" class="btn btn-primary" style="font-size: 16px; padding: 12px 36px;">
+        确认，继续填单
+      </button>
+    </div>`;
+  document.querySelector('.card').insertAdjacentHTML('beforeend', confirmHtml);
+  document.getElementById('progress-label').textContent = '处理完成';
+  document.getElementById('progress-pct').textContent = '100%';
+  document.getElementById('progress-bar').style.width = '100%';
+  evtSource.close();
 });
 
 evtSource.addEventListener('error', e => {
@@ -131,6 +148,10 @@ evtSource.addEventListener('error', e => {
   document.getElementById('status-msg').style.color = '#e74c3c';
   evtSource.close();
 });
+
+function goNext() {
+  if (redirectUrl) window.location.href = redirectUrl;
+}
 
 function setStepActive(id) {
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));

@@ -209,14 +209,16 @@ async def api_process_stream(request: Request, task_id: str, ext: str):
             "result_image": result_img_url,
         }
 
-        # 阶段 6: 重定向
+        # 阶段 6: 等待用户确认
         if vr.passed is True:
-            yield _sse("redirect", {"url": f"/form/{task_id}/{ext}"})
+            yield _sse("complete", {"status": "passed", "url": f"/form/{task_id}/{ext}"})
         elif vr.passed is False:
-            yield _sse("redirect", {"url": f"/verify-fail/{task_id}/{ext}"})
+            yield _sse("complete", {"status": "failed", "url": f"/verify-fail/{task_id}/{ext}"})
         else:
-            # 二维码缺失，直接进表单但带警告
-            yield _sse("redirect", {"url": f"/form/{task_id}/{ext}?qr_missing=1"})
+            yield _sse("complete", {"status": "qr_missing", "url": f"/form/{task_id}/{ext}?qr_missing=1"})
+
+        # 发送进度条到 100%
+        yield _sse("progress", {"stage": "complete", "message": "处理完成，请确认结果"})
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
