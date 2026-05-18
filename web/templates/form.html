@@ -75,7 +75,9 @@ document.getElementById('submit-form').addEventListener('submit', async e => {
   if (data.error === 'duplicate') {
     window.location.href = '/duplicate/' + data.existing_id;
   } else if (data.ok) {
-    window.location.href = '/success/' + data.invoice_id;
+    let url = '/success/' + data.invoice_id;
+    if (data.result_image) url += '?img=' + encodeURIComponent(data.result_image);
+    window.location.href = url;
   }
 });
 </script>

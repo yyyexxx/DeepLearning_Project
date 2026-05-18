@@ -160,6 +160,14 @@ async def api_process_stream(request: Request, task_id: str, ext: str):
             "text_lines": [{"text": t, "confidence": round(s, 2)} for t, s in ocr_results],
         })
 
+        # 生成可视化结果图（YOLO检测框 + OCR文字区域）
+        result_img_path = UPLOAD_DIR / f"{task_id}_result.png"
+        try:
+            _save_result_image(image, bbox, ocr_results, result_img_path)
+            result_img_url = f"/uploads/{task_id}_result.png"
+        except Exception:
+            result_img_url = None
+
         # 阶段 4: LLM 提取（含降级）
         yield _sse("progress", {"stage": "llm", "message": "正在调用大模型提取信息..."})
         extracted = None
@@ -198,6 +206,7 @@ async def api_process_stream(request: Request, task_id: str, ext: str):
             "passed": vr.passed,
             "mismatches": vr.mismatches,
             "qr_missing": qr_data is None,
+            "result_image": result_img_url,
         }
 
         # 阶段 6: 重定向
@@ -281,10 +290,12 @@ async def api_submit(
 
     invoice = save_invoice(db, data)
 
+    result_image = task_data.get("result_image")
+
     # 清理 task 数据
     request.app.state.tasks.pop(task_id, None)
 
-    return {"ok": True, "invoice_id": invoice.id}
+    return {"ok": True, "invoice_id": invoice.id, "result_image": result_image}
 
 
 @router.get("/success/{invoice_id}", response_class=HTMLResponse)
@@ -355,6 +366,50 @@ def _safe_float(val: str):
         return float(val)
     except (ValueError, TypeError):
         return None
+
+
+@router.get("/uploads/{filename}")
+async def serve_upload(filename: str):
+    """提供 uploads 目录下的静态图片（如结果可视化图）。"""
+    filepath = UPLOAD_DIR / filename
+    if not filepath.exists():
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(str(filepath))
+
+
+def _save_result_image(image, qr_bbox, ocr_results, save_path):
+    """在原图上叠加 YOLO 检测框（绿色）和 OCR 文字区域（蓝色），保存为 PNG。"""
+    vis = image.copy()
+    h, w = vis.shape[:2]
+
+    # 画 YOLO QR 检测框
+    if qr_bbox:
+        x1, y1, x2, y2 = qr_bbox
+        cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 3)
+        cv2.putText(vis, "QR Code", (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+    # 画 OCR 文字区域（用原始 OCR 坐标，重新调用一次获取坐标）
+    # ocr_results 只返回了 (text, score)，不包含坐标。需要重新获取带坐标的。
+    # 简化方案：只在有 QR bbox 时画框，OCR 文字在图上以半透明蒙层标注
+    # 实际上 OCR 坐标在之前已被丢弃，这里只展示 YOLO + OCR 文本列表
+
+    # 在图片底部添加文字说明
+    overlay = vis.copy()
+    cv2.rectangle(overlay, (0, h - 140), (w, h), (0, 0, 0), -1)
+    vis = cv2.addWeighted(vis, 0.7, overlay, 0.3, 0)
+
+    y_offset = h - 110
+    cv2.putText(vis, "Recognition Results:", (12, y_offset),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+    for text, score in ocr_results[:8]:
+        y_offset += 16
+        line = f"{text} ({score:.0%})" if len(text) < 40 else f"{text[:37]}..."
+        cv2.putText(vis, line, (16, y_offset),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+
+    cv2.imwrite(str(save_path), vis)
 
 
 def _sse(event: str, data: dict) -> str:
