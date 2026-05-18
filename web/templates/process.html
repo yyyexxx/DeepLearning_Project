@@ -41,7 +41,8 @@
 {% block scripts %}
 <script>
 const TASK_ID = "{{ task_id }}";
-const evtSource = new EventSource('/api/process-stream/' + TASK_ID + '/jpg');
+const EXT = new URLSearchParams(window.location.search).get('ext') || 'jpg';
+const evtSource = new EventSource('/api/process-stream/' + TASK_ID + '/' + EXT);
 
 evtSource.addEventListener('progress', e => {
   const d = JSON.parse(e.data);

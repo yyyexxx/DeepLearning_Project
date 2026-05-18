@@ -86,7 +86,7 @@ uploadBtn.addEventListener('click', async () => {
   const data = await resp.json();
   if (data.error) { showError(data.error); uploadBtn.disabled = false; uploadBtn.textContent = '开始识别'; return; }
 
-  window.location.href = '/process/' + data.task_id;
+  window.location.href = '/process/' + data.task_id + '?ext=' + data.ext;
 });
 
 function showError(msg) {
