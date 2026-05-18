@@ -3,8 +3,9 @@
 import os
 import numpy as np
 
-# 禁用 oneDNN 避免 PaddlePaddle 3.x 兼容性问题
-os.environ["FLAGS_use_onednn"] = "0"
+# PaddlePaddle 3.3.1 oneDNN bug → 锁定 3.2.0
+# OMP 库与 PyTorch 冲突修复
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from paddleocr import PaddleOCR  # noqa: E402
 from config import OCR_LANG  # noqa: E402
@@ -28,11 +29,12 @@ def ocr_image(image: np.ndarray) -> list[tuple[str, float]]:
     if not results:
         return []
 
-    # PaddleOCR 3.x 返回 OCRResult 对象
+    # PaddleOCR 3.x 返回 OCRResult (dict-like)，字段名为 rec_* 前缀
     items = []
     for result in results:
-        for box, text, score in zip(result.boxes, result.texts, result.scores):
-            y_center = (box[0][1] + box[2][1]) / 2
+        for poly, text, score in zip(result["rec_polys"], result["rec_texts"], result["rec_scores"]):
+            # poly 是四点坐标 [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+            y_center = (poly[0][1] + poly[2][1]) / 2
             items.append((y_center, text, score))
 
     items.sort(key=lambda x: x[0])

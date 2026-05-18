@@ -9,3 +9,4 @@ data/model_weights/
 .venv/
 node_modules/
 .DS_Store
+skill说明.md

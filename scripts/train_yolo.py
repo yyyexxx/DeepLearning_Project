@@ -91,7 +91,12 @@ def main():
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--skip-split", action="store_true", help="跳过分割，使用已有 data/dataset/ 目录")
+    parser.add_argument("--data-dir", type=str, default=None, help="自定义标注目录 (默认: data/labeled)")
     args = parser.parse_args()
+
+    if args.data_dir:
+        global LABELED_DIR
+        LABELED_DIR = Path(args.data_dir)
 
     if not args.skip_split:
         split_dataset(train_ratio=args.split)

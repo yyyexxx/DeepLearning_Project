@@ -28,7 +28,7 @@ LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))
 
 # ── YOLO 配置 ───────────────────────────────────────────────
 YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", str(BASE_DIR / "data" / "model_weights" / "yolo_qr.pt"))
-YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.5"))
+YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.2"))
 
 # ── PaddleOCR 配置 ──────────────────────────────────────────
 OCR_LANG = os.getenv("OCR_LANG", "ch")
