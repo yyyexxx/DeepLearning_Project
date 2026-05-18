@@ -319,10 +319,12 @@ async def api_export_excel(invoice_id: int, db: Session = Depends(get_db)):
 
     data = _invoice_to_dict(invoice)
     excel_bytes = generate_excel(data)
+    from urllib.parse import quote
+    safe_name = quote(f"报销单_{invoice.invoice_number}.xlsx")
     return StreamingResponse(
         excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=报销单_{invoice.invoice_number}.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}"},
     )
 
 
@@ -336,10 +338,12 @@ async def api_export_pdf(invoice_id: int, db: Session = Depends(get_db)):
 
     data = _invoice_to_dict(invoice)
     pdf_bytes = generate_pdf(data)
+    from urllib.parse import quote
+    safe_name = quote(f"报销单_{invoice.invoice_number}.pdf")
     return StreamingResponse(
         pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=报销单_{invoice.invoice_number}.pdf"},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}"},
     )
 
 
