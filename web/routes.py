@@ -105,8 +105,10 @@ async def api_process_stream(request: Request, task_id: str, ext: str):
     app_state = request.app.state
 
     async def generate():
-        filepath = str(UPLOAD_DIR / f"{task_id}.{ext}")
-        image = cv2.imread(filepath)
+        filepath = UPLOAD_DIR / f"{task_id}.{ext}"
+        # cv2.imread 不支持中文路径，用 numpy 读取
+        image_data = np.frombuffer(filepath.read_bytes(), np.uint8)
+        image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
         if image is None:
             yield _sse("error", {"message": "无法读取图片"})
             return
