@@ -240,31 +240,42 @@ async def api_submit(
     request: Request,
     task_id: str,
     ext: str,
+    invoice_code: str = Form(""),
+    invoice_number: str = Form(""),
+    invoice_date: str = Form(""),
+    purchaser: str = Form(""),
+    seller: str = Form(""),
+    amount: str = Form(""),
+    tax: str = Form(""),
+    total: str = Form(""),
     reimburser: str = Form(...),
     reason: str = Form(...),
     department: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    """提交报销单。"""
-    # 从 task store 读取提取结果
+    """提交报销单。自动字段以表单值为准（用户可修改），fallback 到 task store。"""
     task_data = request.app.state.tasks.get(task_id, {})
 
-    invoice_code = task_data.get("invoice_code", "")
-    invoice_number = task_data.get("invoice_number", "")
-
-    # 重复检测
-    is_dup, existing = check_duplicate(db, invoice_code, invoice_number)
-    if is_dup:
-        return {"error": "duplicate", "existing_id": existing.id,
-                "message": f"发票 {invoice_code}-{invoice_number} 已在 {existing.created_at} 报销"}
-
     data = {
-        **task_data,
+        "invoice_code": invoice_code or task_data.get("invoice_code", ""),
+        "invoice_number": invoice_number or task_data.get("invoice_number", ""),
+        "invoice_date": invoice_date or task_data.get("invoice_date", ""),
+        "purchaser": purchaser or task_data.get("purchaser", ""),
+        "seller": seller or task_data.get("seller", ""),
+        "amount": _safe_float(amount) or task_data.get("amount"),
+        "tax": _safe_float(tax) or task_data.get("tax"),
+        "total": _safe_float(total) or task_data.get("total"),
         "reimburser": reimburser,
         "reason": reason,
         "department": department,
         "submitted_date": str(date.today()),
     }
+
+    # 重复检测
+    is_dup, existing = check_duplicate(db, data["invoice_code"], data["invoice_number"])
+    if is_dup:
+        return {"error": "duplicate", "existing_id": existing.id,
+                "message": f"发票 {data['invoice_code']}-{data['invoice_number']} 已在 {existing.created_at} 报销"}
 
     invoice = save_invoice(db, data)
 
@@ -331,6 +342,13 @@ async def api_export_pdf(invoice_id: int, db: Session = Depends(get_db)):
 
 
 # ── 辅助函数 ─────────────────────────────────────────────────
+
+
+def _safe_float(val: str):
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
 
 
 def _sse(event: str, data: dict) -> str:

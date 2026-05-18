@@ -10,22 +10,22 @@
   {% endif %}
 
   <form id="submit-form">
-    <h2 style="margin-top: 20px;">自动提取字段（只读）</h2>
+    <h2 style="margin-top: 20px;">自动提取字段（可修改）</h2>
     <div class="form-row">
-      <div><label>发票代码</label><input type="text" name="invoice_code" readonly></div>
-      <div><label>发票号码</label><input type="text" name="invoice_number" readonly></div>
+      <div><label>发票代码</label><input type="text" name="invoice_code"></div>
+      <div><label>发票号码</label><input type="text" name="invoice_number"></div>
     </div>
     <div class="form-row">
-      <div><label>开票日期</label><input type="text" name="invoice_date" readonly></div>
-      <div><label>购买方</label><input type="text" name="purchaser" readonly></div>
+      <div><label>开票日期</label><input type="text" name="invoice_date"></div>
+      <div><label>购买方</label><input type="text" name="purchaser"></div>
     </div>
     <div class="form-row">
-      <div><label>销售方</label><input type="text" name="seller" readonly></div>
-      <div><label>不含税金额</label><input type="text" name="amount" readonly></div>
+      <div><label>销售方</label><input type="text" name="seller"></div>
+      <div><label>不含税金额</label><input type="text" name="amount"></div>
     </div>
     <div class="form-row">
-      <div><label>税额</label><input type="text" name="tax" readonly></div>
-      <div><label>价税合计</label><input type="text" name="total" readonly></div>
+      <div><label>税额</label><input type="text" name="tax"></div>
+      <div><label>价税合计</label><input type="text" name="total"></div>
     </div>
 
     <h2 style="margin-top: 28px;">手动填写字段</h2>
@@ -63,9 +63,12 @@ document.getElementById('submit-form').addEventListener('submit', async e => {
   document.getElementById('submit-error').style.display = 'none';
 
   const formData = new FormData();
-  formData.append('reimburser', document.querySelector('[name="reimburser"]').value);
-  formData.append('reason', document.querySelector('[name="reason"]').value);
-  formData.append('department', document.querySelector('[name="department"]').value);
+  // 所有字段（自动+手动）一并提交
+  const allFields = ['invoice_code','invoice_number','invoice_date','purchaser','seller',
+                     'amount','tax','total','reimburser','reason','department'];
+  for (const name of allFields) {
+    formData.append(name, document.querySelector('[name="' + name + '"]').value);
+  }
 
   const resp = await fetch('/api/submit/' + TASK_ID + '/' + EXT, { method: 'POST', body: formData });
   const data = await resp.json();
